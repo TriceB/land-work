@@ -29,14 +29,15 @@ Data to extract
 
 """
 
-from urllib.request import Request, urlopen
 import json
 import requests
 from bs4 import BeautifulSoup
-from pprint import pprint, pformat
-
+from pprint import pprint
+from operator import itemgetter
 
 url = "https://www.zillow.com/az/land/?searchQueryState=%7B%22pagination%22%3A%7B%7D%2C%22usersSearchTerm%22%3A%22Arizona%22%2C%22mapBounds%22%3A%7B%22west%22%3A-117.85803002343751%2C%22east%22%3A-106.21252221093751%2C%22south%22%3A29.775098051053767%2C%22north%22%3A38.08088103174325%7D%2C%22mapZoom%22%3A6%2C%22regionSelection%22%3A%5B%7B%22regionId%22%3A8%2C%22regionType%22%3A2%7D%5D%2C%22isMapVisible%22%3Afalse%2C%22filterState%22%3A%7B%22price%22%3A%7B%22max%22%3A20000%7D%2C%22con%22%3A%7B%22value%22%3Afalse%7D%2C%22apa%22%3A%7B%22value%22%3Afalse%7D%2C%22mf%22%3A%7B%22value%22%3Afalse%7D%2C%22mp%22%3A%7B%22max%22%3A66%7D%2C%22ah%22%3A%7B%22value%22%3Atrue%7D%2C%22sort%22%3A%7B%22value%22%3A%22globalrelevanceex%22%7D%2C%22lot%22%3A%7B%22min%22%3A871200%7D%2C%22sf%22%3A%7B%22value%22%3Afalse%7D%2C%22tow%22%3A%7B%22value%22%3Afalse%7D%2C%22manu%22%3A%7B%22value%22%3Afalse%7D%7D%2C%22isListVisible%22%3Atrue%7D"
+
+# Zillow uses captcha to prevent robots, header parameters below are to bypass the captcha
 header = {
 	'User-Agent': 'Mozilla/5.0',
 	'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9',
@@ -56,22 +57,29 @@ req = requests.get(url, headers=header)
 soup = BeautifulSoup(req.text, "html.parser")
 # print(soup.prettify())
 
-results_list = []
-containers = soup.find_all("div", "list-card-price")
-scripts = soup.select("[type='application/json']")[1]     # cat1   queryState
-# <script data-zrr-shared-data-key="mobileSearchPageStore" type="application/json"><!--{"queryState":
+scripts = soup.select("[type='application/json']")[1]
 
+# strip characters surrounding queryState dict to parse through it using json <!--{"queryState":   }-->
+# <script data-zrr-shared-data-key="mobileSearchPageStore" type="application/json"><!--{"queryState":
 for results in scripts:
 	stripped = results.strip("<!--")
 	stripped2 = stripped.strip("-->")
 
-	# print(stripped2)
+# print(stripped2)
 
 json_results = json.loads(stripped2)["cat1"]["searchResults"]["listResults"]
-# print(json_results)
+# pprint(json_results)
 
 
 def get_zillow_data():
+	"""
+	Function to parse through the data retrieved from the Zillow search in
+	the provided link.
+
+	Returns list of 10 plots of land under $20k that includes the street address, city,
+	state, zip, the asking price of the plot and the number of acres
+	sorted by largest to smallest acres and lowest to highest price
+	"""
 	zillow_list = []
 	for info in json_results:
 		address = info["addressStreet"]
@@ -84,15 +92,49 @@ def get_zillow_data():
 		# print(zipcode)
 		price = info["unformattedPrice"]
 		# print(price)
-		acreage = info["lotAreaString"]
+		acreage = float(info["lotAreaString"].split("acres")[0])
 		# print(acreage)
-		zillow_data = {"address": address, "city": city, "state": state, "zipcode": str(zipcode), "price": str(price), "acreage": acreage}
-		zillow_list.append(zillow_data)
-	return zillow_list
+		cost_per_acre = price / acreage
+		cpa_rounded = round(cost_per_acre, 2)
+		if 1 < acreage:
+			if price < 20000:
+				zillow_data = {"address": address, "city": city, "state": state, "zipcode": zipcode, "price": price, "acreage": acreage, "cost per acre": cpa_rounded}
+				zillow_list.append(zillow_data)
+				# zillow_list.sort(key=itemgetter("acreage", "price"), reverse=True)
+				zillow_list = sorted(zillow_list, key=itemgetter('acreage'), reverse=True)
+				sorted(zillow_list, key=itemgetter('price'), reverse=False)
+	return zillow_list[:10]
 
 
-print("data")
+def price_sum():
+	"""
+	Function to return the sum of all plots in list
+	"""
+	zillow_list = get_zillow_data()
+	sum_of_prices = 0
+	for price in zillow_list:
+		# print(price["price"])
+		sum_of_prices = float(sum_of_prices) + price["price"]
+	return sum_of_prices
+
+
+def average_acres():
+	"""
+	Function to calculate the average price per acre
+	"""
+	zillow_list = get_zillow_data()
+	the_price_sum = price_sum()
+	list_length = len(zillow_list)
+	print("Number of Plots Listed =", list_length)
+	avg = the_price_sum / list_length
+	avg_rounded = round(avg, 2)
+	return avg_rounded
+
+
+print("Zillow Land Results in the state of " + get_zillow_data()[0]["state"] + " for $20,000 and less")
+
 pprint(get_zillow_data())
 
+print("Sum of Prices =", price_sum())
 
-
+print("Average Cost Per Acre =", average_acres())
