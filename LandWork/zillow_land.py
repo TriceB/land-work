@@ -34,6 +34,7 @@ import requests
 from bs4 import BeautifulSoup
 from pprint import pprint
 from operator import itemgetter
+import pandas as pd
 
 url = "https://www.zillow.com/az/land/?searchQueryState=%7B%22pagination%22%3A%7B%7D%2C%22usersSearchTerm%22%3A%22Arizona%22%2C%22mapBounds%22%3A%7B%22west%22%3A-117.85803002343751%2C%22east%22%3A-106.21252221093751%2C%22south%22%3A29.775098051053767%2C%22north%22%3A38.08088103174325%7D%2C%22mapZoom%22%3A6%2C%22regionSelection%22%3A%5B%7B%22regionId%22%3A8%2C%22regionType%22%3A2%7D%5D%2C%22isMapVisible%22%3Afalse%2C%22filterState%22%3A%7B%22price%22%3A%7B%22max%22%3A20000%7D%2C%22con%22%3A%7B%22value%22%3Afalse%7D%2C%22apa%22%3A%7B%22value%22%3Afalse%7D%2C%22mf%22%3A%7B%22value%22%3Afalse%7D%2C%22mp%22%3A%7B%22max%22%3A66%7D%2C%22ah%22%3A%7B%22value%22%3Atrue%7D%2C%22sort%22%3A%7B%22value%22%3A%22globalrelevanceex%22%7D%2C%22lot%22%3A%7B%22min%22%3A871200%7D%2C%22sf%22%3A%7B%22value%22%3Afalse%7D%2C%22tow%22%3A%7B%22value%22%3Afalse%7D%2C%22manu%22%3A%7B%22value%22%3Afalse%7D%7D%2C%22isListVisible%22%3Atrue%7D"
 
@@ -88,7 +89,7 @@ def get_zillow_data():
 		# print(city)
 		state = info["addressState"]
 		# print(state)
-		zipcode = info["addressZipcode"]
+		zipcode = int(info["addressZipcode"])
 		# print(zipcode)
 		price = info["unformattedPrice"]
 		# print(price)
@@ -138,3 +139,10 @@ pprint(get_zillow_data())
 print("Sum of Prices =", price_sum())
 
 print("Average Cost Per Acre =", average_acres())
+
+# display data as a Pandas Dataframe for easier viewing
+pd.set_option('display.max_columns', None)
+zillow_df = pd.DataFrame(get_zillow_data(), index=None)
+zillow_df.sort_values(by=['acreage', 'price'], ascending=[False, True])
+
+print(zillow_df)
