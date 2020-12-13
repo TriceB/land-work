@@ -1,34 +1,3 @@
-"""
-Data to extract
-{
-  address: "1234 Main Street", - tag = <address class="list-card-adr">0 County Road 6114, Saint Johns, AZ 85936</address>
-  city: "Cochise",              -tag = <address class="list-card-adr">0 County Road 6114, Saint Johns, AZ 85936</address>
-  state: "AZ",                  tag = <address class="list-card-adr">0 County Road 6114, Saint Johns, AZ 85936</address>
-  zip: 12345,                   tag = <address class="list-card-adr">0 County Road 6114, Saint Johns, AZ 85936</address>
-  asking_price: 90000,          tag = <div class="list-card-heading">
-                                        <div class="list-card-price">$12,90000</div>
-  acreage: 37.54                tag = <ul class="list-card-details">
-                                        <li class="">
-                                        40
-                                        <abbr class="list-card-label">
-                                        <!-- -->
-                                        acres lot
-                                        </abbr>
-                                        </li>
-                                        </ul>
-}
-
-'price': '$8,900',
-'unformattedPrice': 8900,
-'address': 'Owens Whitney Elemental District, Wikieup, AZ 85360',
-'addressStreet': 'Owens Whitney Elemental District',
-'addressCity': 'Wikieup',
-'addressState': 'AZ',
-'addressZipcode': '85360',
-'lotAreaString': '20 acres'
-
-"""
-
 import json
 import requests
 from bs4 import BeautifulSoup
@@ -107,13 +76,15 @@ def get_zillow_data():
 	return zillow_list[:10]
 
 
+zillow_info = get_zillow_data()
+
+
 def price_sum():
 	"""
 	Function to return the sum of all plots in list
 	"""
-	zillow_list = get_zillow_data()
 	sum_of_prices = 0
-	for price in zillow_list:
+	for price in zillow_info:
 		# print(price["price"])
 		sum_of_prices = float(sum_of_prices) + price["price"]
 	return sum_of_prices
@@ -123,26 +94,23 @@ def average_acres():
 	"""
 	Function to calculate the average price per acre
 	"""
-	zillow_list = get_zillow_data()
 	the_price_sum = price_sum()
-	list_length = len(zillow_list)
+	list_length = len(zillow_info)
 	print("Number of Plots Listed =", list_length)
 	avg = the_price_sum / list_length
 	avg_rounded = round(avg, 2)
 	return avg_rounded
 
 
-print("Zillow Land Results in the state of " + get_zillow_data()[0]["state"] + " for $20,000 and less")
-
-pprint(get_zillow_data())
+print("Zillow Land Results in the state of " + zillow_info[0]["state"] + " for $20,000 and less")
+pprint(zillow_info)
 
 print("Sum of Prices =", price_sum())
-
 print("Average Cost Per Acre =", average_acres())
 
 # display data as a Pandas Dataframe for easier viewing
 pd.set_option('display.max_columns', None)
-zillow_df = pd.DataFrame(get_zillow_data(), index=None)
+zillow_df = pd.DataFrame(zillow_info, index=None)
 zillow_df.sort_values(by=['acreage', 'price'], ascending=[False, True])
 
 print(zillow_df)
